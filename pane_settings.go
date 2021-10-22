@@ -2,7 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path"
 	"strings"
+	"unicode"
 
 	"github.com/gotk3/gotk3/gtk"
 )
@@ -18,6 +22,8 @@ type settingsPane struct {
 	userLabel          *gtk.Label
 	scrubCheck         *gtk.CheckButton
 	loginCheck         *gtk.CheckButton
+
+	disks []disk
 }
 
 func initSettingsPane(b *gtk.Builder) *settingsPane {
@@ -99,6 +105,21 @@ func initSettingsPane(b *gtk.Builder) *settingsPane {
 	loginCheck := obj.(*gtk.CheckButton)
 	// loginCheck.Connect("toggled", mw.callbackSettingsTyped)
 
+	disks, err := getDiskInfo()
+	if err != nil {
+		panic(err)
+	}
+	for _, d := range disks {
+		diskCtrl.Append(d.Path, fmt.Sprintf("%s (%s) - %s bus, %s partition table", d.Path, d.Model, d.Bus, d.PartTabType))
+	}
+	diskCtrl.SetActive(0)
+
+	tzs := timezones()
+	for _, tz := range tzs {
+		tzCtrl.Append(tz, tz)
+	}
+	tzCtrl.SetActive(0)
+
 	p := &settingsPane{
 		content,
 		hostCtrl, userCtrl,
@@ -106,6 +127,7 @@ func initSettingsPane(b *gtk.Builder) *settingsPane {
 		pwCtrl, pwConfirm, pwLabel,
 		hostLabel, userLabel,
 		scrubCheck, loginCheck,
+		disks,
 	}
 	pwCtrl.Connect("changed", p.callbackPwChanged)
 	pwConfirm.Connect("changed", p.callbackPwChanged)
@@ -198,4 +220,51 @@ func (p *settingsPane) ShouldNext(settings *settings, fullGrid *gtk.Grid) (bool,
 	settings.Password = mainPw
 
 	return true, nil
+}
+
+func readTzDir(p string) []string {
+	var timezones []string
+	fs, _ := ioutil.ReadDir(p)
+	for _, f := range fs {
+		if strings.HasPrefix(f.Name(), "posix") || strings.HasPrefix(f.Name(), "right") || !unicode.Is(unicode.Upper, rune(f.Name()[0])) {
+			continue
+		}
+
+		if f.IsDir() {
+			readTzDir(path.Join(p, f.Name()))
+		} else {
+			timezones = append(timezones, path.Join(p, f.Name()))
+		}
+	}
+
+	return timezones
+}
+
+func timezones() []string {
+	for _, base := range []string{"/usr/share/zoneinfo", "/etc/zoneinfo"} {
+		if _, err := os.Stat(base); err != nil {
+			continue
+		}
+
+		var timezones []string
+		fs, _ := ioutil.ReadDir(base)
+		for _, f := range fs {
+			if strings.HasPrefix(f.Name(), "posix") || strings.HasPrefix(f.Name(), "right") || strings.HasPrefix(f.Name(), "Etc") || !unicode.Is(unicode.Upper, rune(f.Name()[0])) {
+				continue
+			}
+
+			if f.IsDir() {
+				timezones = append(timezones, readTzDir(path.Join(base, f.Name()))...)
+			} else {
+				timezones = append(timezones, path.Join(base, f.Name()))
+			}
+		}
+
+		for i := range timezones {
+			timezones[i] = strings.TrimPrefix(timezones[i], base+"/")
+		}
+		return timezones
+	}
+
+	return nil
 }
