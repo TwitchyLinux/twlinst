@@ -57,7 +57,12 @@ type App struct {
 func makeApp() (*App, error) {
 	a := App{}
 
-	b, err := gtk.BuilderNewFromFile("layout.glade")
+	gladePath := "layout.glade"
+	if _, err := os.Stat(gladePath); err != nil {
+		gladePath = "/etc/twlinst.glade"
+	}
+
+	b, err := gtk.BuilderNewFromFile(gladePath)
 	if err != nil {
 		return nil, err
 	}
