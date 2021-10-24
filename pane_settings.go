@@ -109,8 +109,8 @@ func initSettingsPane(b *gtk.Builder) *settingsPane {
 	if err != nil {
 		panic(err)
 	}
-	for _, d := range disks {
-		diskCtrl.Append(d.Path, fmt.Sprintf("%s (%s) - %s bus, %s partition table", d.Path, d.Model, d.Bus, d.PartTabType))
+	for i, d := range disks {
+		diskCtrl.Append(fmt.Sprint(i), fmt.Sprintf("%s (%s) - %s bus, %s partition table", d.Path, d.Model, d.Bus, d.PartTabType))
 	}
 	diskCtrl.SetActive(0)
 
@@ -213,11 +213,16 @@ func (p *settingsPane) ShouldNext(settings *settings, fullGrid *gtk.Grid) (bool,
 	if strings.ContainsAny(u, "!@#$%^&*()=+[]{}~`\\| ?,./<>") || u == "" {
 		return false, nil
 	}
+	disk := p.disks[p.diskCtrl.GetActive()]
+	tz := p.tzCtrl.GetActiveText()
 
 	// Otherwise lets populate the settings struct!
 	settings.Hostname = h
 	settings.Username = u
 	settings.Password = mainPw
+	settings.Disk = disk
+	settings.Timezone = tz
+	settings.Scrub = p.scrubCheck.GetActive()
 
 	return true, nil
 }
