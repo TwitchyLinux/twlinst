@@ -3,12 +3,12 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path"
 	"strings"
 	"unicode"
 
 	"github.com/gotk3/gotk3/gtk"
+	"github.com/twitchylinux/twlinst/install"
 )
 
 type settingsPane struct {
@@ -23,7 +23,7 @@ type settingsPane struct {
 	scrubCheck         *gtk.CheckButton
 	loginCheck         *gtk.CheckButton
 
-	disks []disk
+	disks []install.Disk
 }
 
 func initSettingsPane(b *gtk.Builder) *settingsPane {
@@ -183,12 +183,12 @@ func (p *settingsPane) doUpdateValidation() {
 	p.callbackUserChanged()
 }
 
-func (p *settingsPane) Show(settings *settings, fullGrid *gtk.Grid) error {
+func (p *settingsPane) Show(settings *install.Settings, fullGrid *gtk.Grid) error {
 	fullGrid.Attach(p.content, 0, 1, 1, 1)
 	return nil
 }
 
-func (p *settingsPane) Hide(settings *settings, fullGrid *gtk.Grid) error {
+func (p *settingsPane) Hide(settings *install.Settings, fullGrid *gtk.Grid) error {
 	currentPane, err := fullGrid.GetChildAt(0, 1)
 	if err != nil {
 		return fmt.Errorf("Failed to get current pane: %v", err)
@@ -197,7 +197,7 @@ func (p *settingsPane) Hide(settings *settings, fullGrid *gtk.Grid) error {
 	return nil
 }
 
-func (p *settingsPane) ShouldNext(settings *settings, fullGrid *gtk.Grid) (bool, error) {
+func (p *settingsPane) ShouldNext(settings *install.Settings, fullGrid *gtk.Grid) (bool, error) {
 	p.doUpdateValidation()
 
 	mainPw, _ := p.pwCtrl.GetText()
@@ -246,30 +246,33 @@ func readTzDir(p string) []string {
 }
 
 func timezones() []string {
-	for _, base := range []string{"/usr/share/zoneinfo", "/etc/zoneinfo"} {
-		if _, err := os.Stat(base); err != nil {
-			continue
-		}
+	// Combo boxes are messed up rn.
+	return []string{"America/Los_Angeles", "America/New_York", "Asia/Tokyo", "Australia/Sydney", "Europe/Amsterdam", "Europe/Berlin"}
 
-		var timezones []string
-		fs, _ := ioutil.ReadDir(base)
-		for _, f := range fs {
-			if strings.HasPrefix(f.Name(), "posix") || strings.HasPrefix(f.Name(), "right") || strings.HasPrefix(f.Name(), "Etc") || !unicode.Is(unicode.Upper, rune(f.Name()[0])) {
-				continue
-			}
-
-			if f.IsDir() {
-				timezones = append(timezones, readTzDir(path.Join(base, f.Name()))...)
-			} else {
-				timezones = append(timezones, path.Join(base, f.Name()))
-			}
-		}
-
-		for i := range timezones {
-			timezones[i] = strings.TrimPrefix(timezones[i], base+"/")
-		}
-		return timezones
-	}
-
-	return nil
+	// for _, base := range []string{"/usr/share/zoneinfo", "/etc/zoneinfo"} {
+	// 	if _, err := os.Stat(base); err != nil {
+	// 		continue
+	// 	}
+	//
+	// 	var timezones []string
+	// 	fs, _ := ioutil.ReadDir(base)
+	// 	for _, f := range fs {
+	// 		if strings.HasPrefix(f.Name(), "posix") || strings.HasPrefix(f.Name(), "right") || strings.HasPrefix(f.Name(), "Etc") || !unicode.Is(unicode.Upper, rune(f.Name()[0])) {
+	// 			continue
+	// 		}
+	//
+	// 		if f.IsDir() {
+	// 			timezones = append(timezones, readTzDir(path.Join(base, f.Name()))...)
+	// 		} else {
+	// 			timezones = append(timezones, path.Join(base, f.Name()))
+	// 		}
+	// 	}
+	//
+	// 	for i := range timezones {
+	// 		timezones[i] = strings.TrimPrefix(timezones[i], base+"/")
+	// 	}
+	// 	return timezones
+	// }
+	//
+	// return nil
 }

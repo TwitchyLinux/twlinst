@@ -6,46 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/twitchylinux/twlinst/install"
 )
-
-type disk struct {
-	Name, Path string
-
-	Model    string
-	Serial   string
-	Bus, Rev string
-	Symlinks []string
-
-	NumBlocks int
-
-	Major, Minor int
-	PartN        int
-
-	PartTabType string
-	PartUUID    string
-	FsUUID      string
-	Partitions  []*disk
-	FS, Label   string
-}
-
-func (d *disk) pathForPartition(partNum int) string {
-	if _, err := os.Stat(fmt.Sprintf("%s%d", d.Path, partNum)); err == nil {
-		return fmt.Sprintf("%s%d", d.Path, partNum)
-	}
-	if _, err := os.Stat(fmt.Sprintf("%sp%d", d.Path, partNum)); err == nil {
-		return fmt.Sprintf("%sp%d", d.Path, partNum)
-	}
-
-	// fallback
-	if strings.Contains(d.Path, "/sd") {
-		return d.Path + fmt.Sprint(partNum)
-	}
-	return d.Path + "p" + fmt.Sprint(partNum)
-}
 
 func getDevBlockSize(name string) (int, error) {
 	d, err := ioutil.ReadFile(fmt.Sprintf("/sys/class/block/%s/size", name))
@@ -55,14 +21,14 @@ func getDevBlockSize(name string) (int, error) {
 	return strconv.Atoi(strings.Trim(string(d), "\n\t\r "))
 }
 
-func getUdevDiskInfo(path string, isRoot bool) (*disk, error) {
+func getUdevDiskInfo(path string, isRoot bool) (*install.Disk, error) {
 	c := exec.Command("udevadm", "info", "-q", "all", "--name", path)
 	o, err := c.Output()
 	if err != nil {
 		return nil, err
 	}
 	r := bufio.NewScanner(bytes.NewReader(o))
-	out := disk{Path: path}
+	out := install.Disk{Path: path}
 
 	for r.Scan() {
 		line := r.Text()
@@ -132,7 +98,7 @@ func getUdevDiskInfo(path string, isRoot bool) (*disk, error) {
 	return &out, nil
 }
 
-func getDiskInfo() ([]disk, error) {
+func getDiskInfo() ([]install.Disk, error) {
 	stdout, err := exec.Command("lsblk", "-Jadp").Output()
 	if err != nil {
 		return nil, err
@@ -147,7 +113,7 @@ func getDiskInfo() ([]disk, error) {
 		return nil, err
 	}
 
-	var out []disk
+	var out []install.Disk
 	for _, blkDev := range blockDevs["blockdevices"] {
 		if blkDev.Type == "disk" {
 			diskInfo, err := getUdevDiskInfo(blkDev.Name, true)

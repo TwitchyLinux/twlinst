@@ -8,6 +8,7 @@ import (
 
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
+	"github.com/twitchylinux/twlinst/install"
 )
 
 const styling = `
@@ -32,12 +33,12 @@ const styling = `
 `
 
 type pane interface {
-	Hide(settings *settings, fullGrid *gtk.Grid) error
-	Show(settings *settings, fullGrid *gtk.Grid) error
+	Hide(settings *install.Settings, fullGrid *gtk.Grid) error
+	Show(settings *install.Settings, fullGrid *gtk.Grid) error
 }
 
 type nextHookPane interface {
-	ShouldNext(settings *settings, fullGrid *gtk.Grid) (bool, error)
+	ShouldNext(settings *install.Settings, fullGrid *gtk.Grid) (bool, error)
 }
 
 type App struct {
@@ -47,7 +48,7 @@ type App struct {
 
 	cursor   uint
 	panes    []pane
-	settings settings
+	settings install.Settings
 
 	nextBtn, prevBtn *gtk.Button
 	abortBtn         *gtk.Button
@@ -101,6 +102,7 @@ func makeApp() (*App, error) {
 		initIntroPane(b),
 		initSettingsPane(b),
 		initConfirmPane(b),
+		initInstallPane(b),
 	}
 	if err := a.panes[0].Show(&a.settings, a.fullGrid); err != nil {
 		return nil, err
@@ -157,11 +159,11 @@ func (a *App) callbackNext() {
 		panic(err)
 	}
 	a.cursor++
+	a.prevBtn.SetSensitive(a.cursor > 0)
 	if err := a.panes[a.cursor].Show(&a.settings, a.fullGrid); err != nil {
 		panic(err)
 	}
 	a.nextBtn.SetSensitive(int(a.cursor+1) < len(a.panes))
-	a.prevBtn.SetSensitive(a.cursor > 0)
 }
 
 func (a *App) callbackPrev() {

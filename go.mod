@@ -1,4 +1,4 @@
-module https://github.com/twitchylinux/twlinst
+module github.com/twitchylinux/twlinst
 
 go 1.15
 

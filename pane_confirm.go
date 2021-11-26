@@ -6,6 +6,7 @@ import (
 	"unsafe"
 
 	"github.com/gotk3/gotk3/gtk"
+	"github.com/twitchylinux/twlinst/install"
 )
 
 // #cgo pkg-config: gtk+-3.0
@@ -13,11 +14,6 @@ import (
 // void createConfirmTags(GtkTextBuffer* buff) {
 //   gtk_text_buffer_create_tag(buff, "settingName", "weight", "700", NULL);
 //   gtk_text_buffer_create_tag(buff, "warning", "foreground", "red", NULL);
-// }
-// void createInstallViewTags(GtkTextBuffer* buff) {
-//   gtk_text_buffer_create_tag(buff, "cmdMsg", "weight", "700", NULL);
-//   gtk_text_buffer_create_tag(buff, "warnMsg", "foreground", "orange", NULL);
-//   gtk_text_buffer_create_tag(buff, "errMsg", "foreground", "red", NULL);
 // }
 import "C"
 
@@ -65,7 +61,7 @@ type textviewStyleSelection struct {
 	Class      string
 }
 
-func (p *confirmPane) Show(settings *settings, fullGrid *gtk.Grid) error {
+func (p *confirmPane) Show(settings *install.Settings, fullGrid *gtk.Grid) error {
 	fullGrid.Attach(p.content, 0, 1, 1, 1)
 
 	var outText string
@@ -134,7 +130,7 @@ func (p *confirmPane) Show(settings *settings, fullGrid *gtk.Grid) error {
 	return nil
 }
 
-func (p *confirmPane) Hide(settings *settings, fullGrid *gtk.Grid) error {
+func (p *confirmPane) Hide(settings *install.Settings, fullGrid *gtk.Grid) error {
 	currentPane, err := fullGrid.GetChildAt(0, 1)
 	if err != nil {
 		return fmt.Errorf("Failed to get current pane: %v", err)
