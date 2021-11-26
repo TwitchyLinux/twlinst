@@ -99,7 +99,7 @@ func (p *confirmPane) Show(settings *install.Settings, fullGrid *gtk.Grid) error
 	writeStyled(settings.Disk.Model+" ("+settings.Disk.Serial+")", "")
 	writeStyled("\n\n", "")
 	writeStyled("  Capacity: ", "settingName")
-	writeStyled(byteCountDecimal(int64(settings.Disk.NumBlocks*512))+"\n", "")
+	writeStyled(install.ByteCountDecimal(int64(settings.Disk.NumBlocks*512))+"\n", "")
 	writeStyled("  UUID: ", "settingName")
 	writeStyled(settings.Disk.PartUUID, "")
 	writeStyled("\n", "")

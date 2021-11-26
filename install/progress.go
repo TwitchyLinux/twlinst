@@ -27,6 +27,12 @@ type Update struct {
 	TrimLastLine bool
 }
 
+func progressInfo(updateChan chan Update, fmtStr string, args ...interface{}) {
+	updateChan <- Update{
+		Msg: fmt.Sprintf("  "+fmtStr, args...),
+	}
+}
+
 type cmdInteractiveWriter struct {
 	updateChan chan Update
 	logPrefix  string
