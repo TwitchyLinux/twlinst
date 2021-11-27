@@ -44,7 +44,7 @@ func (s *PartitionStep) Exec(updateChan chan Update, run *Run) error {
 	progressInfo(updateChan, "    [FAT32]  Boot partition (%s)\n", ByteCountDecimal(bootPartSizeMB*1000*1000))
 	progressInfo(updateChan, "    [LUKS2]  Encrypted root partition (%s)\n", ByteCountDecimal(int64(mainPartBlocks*blockSize)))
 
-	cmd := exec.Command("parted", "--script", run.config.Disk.Path, "mklabel", "gpt",
+	cmd := exec.Command("sudo", "parted", "--script", run.config.Disk.Path, "mklabel", "gpt",
 		"mkpart", "fat32", "1", strconv.Itoa(bootPartSizeMB),
 		"mkpart", strconv.Itoa(1+bootPartSizeMB), strconv.Itoa(1+bootPartSizeMB+mainPartMB),
 		"set", "1", "boot", "on")
@@ -58,7 +58,7 @@ func (s *PartitionStep) Exec(updateChan chan Update, run *Run) error {
 	}
 	time.Sleep(time.Second)
 
-	cmd = exec.Command("partprobe", run.config.Disk.Path)
+	cmd = exec.Command("sudo", "partprobe", run.config.Disk.Path)
 	progressInfo(updateChan, "\n  Probing: %v\n", run.config.Disk.Path)
 	out, err = cmd.CombinedOutput()
 	progressInfo(updateChan, "  Output: %q\n", string(out))
@@ -67,7 +67,7 @@ func (s *PartitionStep) Exec(updateChan chan Update, run *Run) error {
 	}
 	time.Sleep(3 * time.Second)
 
-	cmd = exec.Command("mkfs.fat", "-F32", "-n", "SYSTEM-EFI", run.config.Disk.pathForPartition(1))
+	cmd = exec.Command("sudo", "mkfs.fat", "-F32", "-n", "SYSTEM-EFI", run.config.Disk.pathForPartition(1))
 	progressInfo(updateChan, "\n  Creating fat32 EFI filesystem on %v\n", run.config.Disk.pathForPartition(1))
 	out, err = cmd.CombinedOutput()
 	progressInfo(updateChan, "  Output: %q\n", string(out))
@@ -76,7 +76,7 @@ func (s *PartitionStep) Exec(updateChan chan Update, run *Run) error {
 	}
 	time.Sleep(1 * time.Second)
 
-	cmd = exec.Command("cryptsetup", "luksFormat", "--type", "luks2", run.config.Disk.pathForPartition(2), "--key-file", "-",
+	cmd = exec.Command("sudo", "cryptsetup", "luksFormat", "--type", "luks2", run.config.Disk.pathForPartition(2), "--key-file", "-",
 		"--hash", "sha256", "--cipher", "aes-xts-plain64", "--key-size", "512", "--iter-time", "2600", "--use-random")
 	progressInfo(updateChan, "\n  Creating encrypted filesystem on %v\n", run.config.Disk.pathForPartition(2))
 	progressInfo(updateChan, "  Invocation: %v\n", cmd.Args)
@@ -89,7 +89,7 @@ func (s *PartitionStep) Exec(updateChan chan Update, run *Run) error {
 	time.Sleep(1 * time.Second)
 
 	progressInfo(updateChan, "\n  Unlocking root filesystem\n")
-	cmd = exec.Command("cryptsetup", "luksOpen", "--key-file", "-", run.config.Disk.pathForPartition(2), "cryptroot")
+	cmd = exec.Command("sudo", "cryptsetup", "luksOpen", "--key-file", "-", run.config.Disk.pathForPartition(2), "cryptroot")
 	progressInfo(updateChan, "  Invocation: %v\n", cmd.Args)
 	cmd.Stdin = bytes.NewReader([]byte(run.config.Password))
 	out, err = cmd.CombinedOutput()
@@ -105,7 +105,7 @@ func (s *PartitionStep) Exec(updateChan chan Update, run *Run) error {
 		}
 	}
 
-	cmd = exec.Command("mkfs.ext4", "-qF", "/dev/mapper/cryptroot")
+	cmd = exec.Command("sudo", "mkfs.ext4", "-qF", "/dev/mapper/cryptroot")
 	progressInfo(updateChan, "\n  Creating ext4 filesystem on %v\n", "/dev/mapper/cryptroot")
 	out, err = cmd.CombinedOutput()
 	progressInfo(updateChan, "  Output: %q\n", string(out))
@@ -118,7 +118,7 @@ func (s *PartitionStep) Exec(updateChan chan Update, run *Run) error {
 
 func (s *PartitionStep) scrubEncrypted(updateChan chan Update, run *Run) error {
 	progressInfo(updateChan, "\n  Scrubbing encrypted partition:\n")
-	e := exec.Command("dd", "if=/dev/zero", "of=/dev/mapper/cryptroot", "bs=1M", "status=progress")
+	e := exec.Command("sudo", "dd", "if=/dev/zero", "of=/dev/mapper/cryptroot", "bs=1M", "status=progress")
 	progressInfo(updateChan, "  Invocation: %v\n", e.Args)
 
 	e.Stdout = &cmdInteractiveWriter{
