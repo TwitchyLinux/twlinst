@@ -8,14 +8,7 @@ import (
 	"time"
 )
 
-const (
-	blockSize = 512
-
-	bootPartSizeMB = 256
-	bootPartBlocks = bootPartSizeMB * 1024 * 1024 / blockSize
-
-	unallocBlocks = 128
-)
+const bootPartSizeMB = 256
 
 // ByteCountDecimal pretty-formats the number of bytes.
 func ByteCountDecimal(b int64) string {
@@ -35,19 +28,15 @@ type PartitionStep struct{}
 
 func (s *PartitionStep) Exec(updateChan chan Update, run *Run) error {
 	progressInfo(updateChan, "Partitioning %q\n", run.config.Disk.Path)
-	progressInfo(updateChan, "Device has a capacity of %s\n", ByteCountDecimal(int64(run.config.Disk.NumBlocks*blockSize)))
+	progressInfo(updateChan, "Device has a capacity of %s\n", ByteCountDecimal(int64(run.config.Disk.NumBlocks*512)))
 	progressInfo(updateChan, "\n  New partition table:\n")
-
-	mainPartBlocks := run.config.Disk.NumBlocks - bootPartBlocks - unallocBlocks
-	mainPartMB := mainPartBlocks * blockSize / 1024 / 1024
-
-	progressInfo(updateChan, "    [FAT32]  Boot partition (%s)\n", ByteCountDecimal(bootPartSizeMB*1000*1000))
-	progressInfo(updateChan, "    [LUKS2]  Encrypted root partition (%s)\n", ByteCountDecimal(int64(mainPartBlocks*blockSize)))
+	progressInfo(updateChan, "    [FAT32]  Boot partition (%s)\n", ByteCountDecimal(bootPartSizeMB))
+	progressInfo(updateChan, "    [LUKS2]  Encrypted root partition\n")
 
 	cmd := exec.Command("sudo", "parted", "--script", run.config.Disk.Path, "mklabel", "gpt",
-		"mkpart", "fat32", "1", strconv.Itoa(bootPartSizeMB),
-		"mkpart", strconv.Itoa(1+bootPartSizeMB), strconv.Itoa(1+bootPartSizeMB+mainPartMB),
-		"set", "1", "boot", "on")
+		"mkpart", "'EFI system partition'", "fat32", "1MiB", strconv.Itoa(bootPartSizeMB)+"MiB",
+		"mkpart", "TWL", strconv.Itoa(bootPartSizeMB)+"MiB", "100%",
+		"set", "1", "esp", "on")
 
 	progressInfo(updateChan, "\n  Parted invocation: %v\n", cmd.Args)
 

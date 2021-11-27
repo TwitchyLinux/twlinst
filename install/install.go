@@ -23,6 +23,7 @@ func Configure(ch chan Update, config Settings) *Run {
 		config:   config,
 		steps: []step{
 			&PartitionStep{},
+			&ConfigureStep{},
 		},
 	}
 }
