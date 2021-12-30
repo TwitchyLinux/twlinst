@@ -133,8 +133,8 @@ func (p *installPane) updater() {
 		if msg.Step != "" {
 			glib.IdleAdd(func() {
 				applyBold(p.stepFormatLabel, msg.Step == "format")
-				applyBold(p.stepCopyLabel, msg.Step == "copy")
 				applyBold(p.stepConfigureLabel, msg.Step == "configure")
+				applyBold(p.stepCopyLabel, msg.Step == "copy")
 				applyBold(p.stepCleanupLabel, msg.Step == "cleanup")
 			})
 		}

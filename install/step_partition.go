@@ -30,7 +30,7 @@ func (s *PartitionStep) Exec(updateChan chan Update, run *Run) error {
 	progressInfo(updateChan, "Partitioning %q\n", run.config.Disk.Path)
 	progressInfo(updateChan, "Device has a capacity of %s\n", ByteCountDecimal(int64(run.config.Disk.NumBlocks*512)))
 	progressInfo(updateChan, "\n  New partition table:\n")
-	progressInfo(updateChan, "    [FAT32]  Boot partition (%s)\n", ByteCountDecimal(bootPartSizeMB))
+	progressInfo(updateChan, "    [FAT32]  Boot partition (%s)\n", ByteCountDecimal(1024*1024*bootPartSizeMB))
 	progressInfo(updateChan, "    [LUKS2]  Encrypted root partition\n")
 
 	cmd := exec.Command("sudo", "parted", "--script", run.config.Disk.Path, "mklabel", "gpt",
