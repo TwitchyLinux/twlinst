@@ -2,11 +2,56 @@ package install
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"text/template"
 	"time"
+
+	"github.com/twitchylinux/twlinst/z"
 )
+
+const fsTmpl = `
+{config, pkgs, boot, lib, ...}:
+	{
+		boot.initrd.luks.devices = {
+			"cryptroot" = {
+				device = "/dev/disk/by-uuid/{{.LuksUUID}}";
+			};
+		};
+
+		fileSystems = {
+			"/" = {
+				device = "/dev/disk/by-uuid/{{.Ext4UUID}}";
+				fsType = "ext4";
+			};
+			"/boot" = {
+				device = "/dev/disk/by-uuid/{{.BootUUID}}";
+				fsType = "vfat";
+			};
+		};
+	}
+`
+
+const nixCfgTmpl = `
+{...}:
+{
+  imports = [
+    /etc/twl-base
+    ./filesystems.nix
+  ];
+
+	users.users.{{.Username}} = {
+    isNormalUser = true;
+    extraGroups = [ "wheel" "networkmanager" "video" ];
+    # Allow the graphical user to login without password
+    hashedPassword = "{{.PasswordHash}}";
+  };
+
+	time.timeZone = "{{.Timezone}}";
+}
+`
 
 type ConfigureStep struct{}
 
@@ -20,7 +65,83 @@ func (s *ConfigureStep) Exec(updateChan chan Update, run *Run) error {
 	if err := s.setupEtc(updateChan, run, mountBase); err != nil {
 		return err
 	}
+	if err := s.setupFilesystemConf(updateChan, run, mountBase); err != nil {
+		return err
+	}
+	if err := s.setupNixConf(updateChan, run, mountBase); err != nil {
+		return err
+	}
+
+	if out, err := exec.Command("sudo", "chown", "-R", "root", filepath.Join(mountBase, "etc")).CombinedOutput(); err != nil {
+		return fmt.Errorf("chmod etc (root): %s (%v)", strings.TrimSpace(string(out)), err)
+	}
 	return nil
+}
+
+func (s *ConfigureStep) setupNixConf(updateChan chan Update, run *Run, mountBase string) error {
+	t, err := template.New("configuration.nix").Parse(nixCfgTmpl)
+	if err != nil {
+		return fmt.Errorf("template parse: %v", err)
+	}
+
+	f, err := os.OpenFile(filepath.Join(mountBase, "etc", "nixos", "configuration.nix"), os.O_CREATE | os.O_TRUNC | os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+
+	mkpwd := exec.Command("mkpasswd", "-s", "-m", "sha-512")
+	mkpwd.Stdin = strings.NewReader(run.config.Password)
+	pwHash, err := mkpwd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("mkpasswd: %v", err)
+	}
+
+	if err := t.Execute(f, map[string]interface{}{
+		"Username": run.config.Username,
+		"Timezone": run.config.Timezone,
+		"PasswordHash": strings.TrimSpace(string(pwHash)),
+	}); err != nil {
+		return fmt.Errorf("writing config: %v", err)
+	}
+
+	return f.Close()
+}
+
+func (s *ConfigureStep) setupFilesystemConf(updateChan chan Update, run *Run, mountBase string) error {
+	t, err := template.New("filesystems.nix").Parse(fsTmpl)
+	if err != nil {
+		return fmt.Errorf("template parse: %v", err)
+	}
+
+	f, err := os.OpenFile(filepath.Join(mountBase, "etc", "nixos", "filesystems.nix"), os.O_CREATE | os.O_TRUNC | os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+
+	bootInfo, err := z.GetUdevDiskInfo(run.config.Disk.PathForPartition(1), false)
+	if err != nil {
+		return err
+	}
+	mainInfo, err := z.GetUdevDiskInfo(run.config.Disk.PathForPartition(2), false)
+	if err != nil {
+		return err
+	}
+	cryptInfo, err := z.GetUdevDiskInfo("/dev/mapper/cryptroot", false)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("boot info: %+v\n\nmain info: %+v\n\n crypt info: %+v\n\n", bootInfo, mainInfo, cryptInfo)
+
+	if err := t.Execute(f, map[string]interface{}{
+		"BootUUID": bootInfo.FsUUID,
+		"LuksUUID": mainInfo.FsUUID,
+		"Ext4UUID": cryptInfo.FsUUID,
+	}); err != nil {
+		return fmt.Errorf("writing filesystems: %v", err)
+	}
+
+	return f.Close()
 }
 
 func (s *ConfigureStep) setupEtc(updateChan chan Update, run *Run, mountBase string) error {
@@ -32,7 +153,7 @@ func (s *ConfigureStep) setupEtc(updateChan chan Update, run *Run, mountBase str
 	}
 
 	progressInfo(updateChan, "\n  Staging configuration:\n")
-	e := exec.Command("cp", "-arv", "/etc/nixos", filepath.Join(mountBase, "etc"))
+	e := exec.Command("cp", "-ar", "/etc/nixos", filepath.Join(mountBase, "etc"))
 	e.Stdout = &cmdInteractiveWriter{
 		updateChan: updateChan,
 		logPrefix:  "  ",
@@ -43,7 +164,7 @@ func (s *ConfigureStep) setupEtc(updateChan chan Update, run *Run, mountBase str
 		return err
 	}
 	e.Wait()
-	e = exec.Command("cp", "-arv", "/etc/twl-base", filepath.Join(mountBase, "etc"))
+	e = exec.Command("cp", "-ar", "/etc/twl-base", filepath.Join(mountBase, "etc"))
 	e.Stdout = &cmdInteractiveWriter{
 		updateChan: updateChan,
 		logPrefix:  "  ",
@@ -55,9 +176,14 @@ func (s *ConfigureStep) setupEtc(updateChan chan Update, run *Run, mountBase str
 	}
 	e.Wait()
 
-	if out, err := exec.Command("sudo", "root", "nixos", filepath.Join(mountBase, "etc")).CombinedOutput(); err != nil {
-		return fmt.Errorf("chmod etc (root): %s (%v)", strings.TrimSpace(string(out)), err)
+	a := Applyer{
+		Run:         run,
+		TwlBasePath: filepath.Join(mountBase, "etc", "twl-base"),
 	}
+	if err := a.Exec(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -85,8 +211,8 @@ func (s *ConfigureStep) setupMounts(updateChan chan Update, run *Run, mountBase 
 	}
 	time.Sleep(100 * time.Millisecond)
 
-	progressInfo(updateChan, "Mounting %s -> %s\n", run.config.Disk.pathForPartition(1), filepath.Join(mountBase, "boot"))
-	cmd = exec.Command("sudo", "mount", run.config.Disk.pathForPartition(1), filepath.Join(mountBase, "boot"))
+	progressInfo(updateChan, "Mounting %s -> %s\n", run.config.Disk.PathForPartition(1), filepath.Join(mountBase, "boot"))
+	cmd = exec.Command("sudo", "mount", run.config.Disk.PathForPartition(1), filepath.Join(mountBase, "boot"))
 	out, err = cmd.CombinedOutput()
 	if err != nil {
 		return err

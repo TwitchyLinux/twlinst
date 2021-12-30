@@ -9,6 +9,7 @@ import (
 
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/twitchylinux/twlinst/install"
+	"github.com/twitchylinux/twlinst/z"
 )
 
 type settingsPane struct {
@@ -23,7 +24,7 @@ type settingsPane struct {
 	scrubCheck         *gtk.CheckButton
 	loginCheck         *gtk.CheckButton
 
-	disks []install.Disk
+	disks []z.Disk
 }
 
 func initSettingsPane(b *gtk.Builder) *settingsPane {

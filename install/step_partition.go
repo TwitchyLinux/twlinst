@@ -56,8 +56,8 @@ func (s *PartitionStep) Exec(updateChan chan Update, run *Run) error {
 	}
 	time.Sleep(3 * time.Second)
 
-	cmd = exec.Command("sudo", "mkfs.fat", "-F32", "-n", "SYSTEM-EFI", run.config.Disk.pathForPartition(1))
-	progressInfo(updateChan, "\n  Creating fat32 EFI filesystem on %v\n", run.config.Disk.pathForPartition(1))
+	cmd = exec.Command("sudo", "mkfs.fat", "-F32", "-n", "SYSTEM-EFI", run.config.Disk.PathForPartition(1))
+	progressInfo(updateChan, "\n  Creating fat32 EFI filesystem on %v\n", run.config.Disk.PathForPartition(1))
 	out, err = cmd.CombinedOutput()
 	progressInfo(updateChan, "  Output: %q\n", string(out))
 	if err != nil {
@@ -65,9 +65,9 @@ func (s *PartitionStep) Exec(updateChan chan Update, run *Run) error {
 	}
 	time.Sleep(1 * time.Second)
 
-	cmd = exec.Command("sudo", "cryptsetup", "luksFormat", "--type", "luks2", run.config.Disk.pathForPartition(2), "--key-file", "-",
+	cmd = exec.Command("sudo", "cryptsetup", "luksFormat", "--type", "luks2", run.config.Disk.PathForPartition(2), "--key-file", "-",
 		"--hash", "sha256", "--cipher", "aes-xts-plain64", "--key-size", "512", "--iter-time", "2600", "--use-random")
-	progressInfo(updateChan, "\n  Creating encrypted filesystem on %v\n", run.config.Disk.pathForPartition(2))
+	progressInfo(updateChan, "\n  Creating encrypted filesystem on %v\n", run.config.Disk.PathForPartition(2))
 	progressInfo(updateChan, "  Invocation: %v\n", cmd.Args)
 	cmd.Stdin = bytes.NewReader([]byte(run.config.Password))
 	out, err = cmd.CombinedOutput()
@@ -78,7 +78,7 @@ func (s *PartitionStep) Exec(updateChan chan Update, run *Run) error {
 	time.Sleep(1 * time.Second)
 
 	progressInfo(updateChan, "\n  Unlocking root filesystem\n")
-	cmd = exec.Command("sudo", "cryptsetup", "luksOpen", "--key-file", "-", run.config.Disk.pathForPartition(2), "cryptroot")
+	cmd = exec.Command("sudo", "cryptsetup", "luksOpen", "--key-file", "-", run.config.Disk.PathForPartition(2), "cryptroot")
 	progressInfo(updateChan, "  Invocation: %v\n", cmd.Args)
 	cmd.Stdin = bytes.NewReader([]byte(run.config.Password))
 	out, err = cmd.CombinedOutput()
