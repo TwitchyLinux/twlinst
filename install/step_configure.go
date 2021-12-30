@@ -31,11 +31,13 @@ const fsTmpl = `
 				fsType = "vfat";
 			};
 		};
+
+		boot.initrd.availableKernelModules = ["aesni_intel" "cryptd"];
 	}
 `
 
 const nixCfgTmpl = `
-{...}:
+{lib, ...}:
 {
 	imports = [
 		/etc/twl-base
