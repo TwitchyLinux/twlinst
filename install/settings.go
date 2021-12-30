@@ -11,6 +11,7 @@ type Settings struct {
 	Password string
 	Timezone string
 
-	Disk  z.Disk
-	Scrub bool
+	Disk      z.Disk
+	Scrub     bool
+	Autologin bool
 }

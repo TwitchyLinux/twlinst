@@ -37,19 +37,35 @@ const fsTmpl = `
 const nixCfgTmpl = `
 {...}:
 {
-  imports = [
-    /etc/twl-base
-    ./filesystems.nix
-  ];
+	imports = [
+		/etc/twl-base
+		./filesystems.nix
+	];
 
 	users.users.{{.Username}} = {
-    isNormalUser = true;
-    extraGroups = [ "wheel" "networkmanager" "video" ];
-    # Allow the graphical user to login without password
-    hashedPassword = "{{.PasswordHash}}";
-  };
+		isNormalUser = true;
+		extraGroups = [ "wheel" "networkmanager" "video" ];
+		hashedPassword = "{{.PasswordHash}}";
+	};
 
 	time.timeZone = "{{.Timezone}}";
+	networking.hostName = "{{.Hostname}}";
+
+	{{if .Autologin -}}
+	# Automatically login on startup.
+	services.getty.autologinUser = "{{.Username}}";
+	system.activationScripts.etc = lib.stringAfter [ "users" "groups" ]
+		''
+			mkdir -pv /home/{{.Username}}/.config/sway
+			ln -s /etc/twl-base/resources/sway.config /home/{{.Username}}/.config/sway/config || true
+
+			if [ ! -f /home/{{.Username}}/.bashrc ]; then
+			echo 'if [[ $(tty) == "/dev/tty1" ]]; then' >> /home/{{.Username}}/.bash_login
+			echo '  sleep 2 && startsway' >> /home/{{.Username}}/.bash_login
+			echo 'fi' >> /home/{{.Username}}/.bash_login
+			fi
+		'';
+	{{- end}}
 }
 `
 
@@ -100,6 +116,8 @@ func (s *ConfigureStep) setupNixConf(updateChan chan Update, run *Run, mountBase
 		"Username": run.config.Username,
 		"Timezone": run.config.Timezone,
 		"PasswordHash": strings.TrimSpace(string(pwHash)),
+		"Hostname": run.config.Hostname,
+		"Autologin": run.config.Autologin,
 	}); err != nil {
 		return fmt.Errorf("writing config: %v", err)
 	}

@@ -224,6 +224,7 @@ func (p *settingsPane) ShouldNext(settings *install.Settings, fullGrid *gtk.Grid
 	settings.Disk = disk
 	settings.Timezone = tz
 	settings.Scrub = p.scrubCheck.GetActive()
+	settings.Autologin = p.loginCheck.GetActive()
 
 	return true, nil
 }
