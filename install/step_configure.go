@@ -1,7 +1,6 @@
 package install
 
 import (
-	"os"
 	"os/exec"
 	"time"
 )
@@ -9,36 +8,41 @@ import (
 type ConfigureStep struct{}
 
 func (s *ConfigureStep) Exec(updateChan chan Update, run *Run) error {
-	if err := os.Mkdir("/tmp/install_mounts", 0755); err != nil && !os.IsExist(err) {
-		return err
-	}
-	if err := os.Mkdir("/tmp/install_mounts/root", 0755); err != nil && !os.IsExist(err) {
-		return err
-	}
-	if err := os.Mkdir("/tmp/install_mounts/boot", 0755); err != nil && !os.IsExist(err) {
-		return err
-	}
-	time.Sleep(1 * time.Second)
-
-	progressInfo(updateChan, "Mounting %s -> /tmp/install_mounts/boot\n", run.config.Disk.pathForPartition(1))
-	cmd := exec.Command("sudo", "mount", run.config.Disk.pathForPartition(1), "/tmp/install_mounts/boot")
+	time.Sleep(2 * time.Second)
+	cmd := exec.Command("sudo", "mkdir", "-p", "/mnt")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return err
 	}
-	progressInfo(updateChan, "  Output: %q\n", string(out))
-	progressInfo(updateChan, "Mounted boot fs.\n")
-	time.Sleep(3 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
-	progressInfo(updateChan, "\n  Mounting %s -> /tmp/install_mounts/root\n", "/dev/mapper/cryptroot")
-	cmd = exec.Command("sudo", "mount", "/dev/mapper/cryptroot", "/tmp/install_mounts/root")
+	progressInfo(updateChan, "\n  Mounting %s -> /mnt\n", "/dev/mapper/cryptroot")
+	cmd = exec.Command("sudo", "mount", "/dev/mapper/cryptroot", "/mnt")
 	out, err = cmd.CombinedOutput()
 	if err != nil {
 		return err
 	}
 	progressInfo(updateChan, "  Output: %q\n", string(out))
 	progressInfo(updateChan, "Mounted root fs.\n\n")
+	time.Sleep(3 * time.Second)
+
+	cmd = exec.Command("sudo", "mkdir", "-p", "/mnt/boot")
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		return err
+	}
+	time.Sleep(100 * time.Millisecond)
+
+	progressInfo(updateChan, "Mounting %s -> /mnt/boot\n", run.config.Disk.pathForPartition(1))
+	cmd = exec.Command("sudo", "mount", run.config.Disk.pathForPartition(1), "/mnt/boot")
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		return err
+	}
+	progressInfo(updateChan, "  Output: %q\n", string(out))
+	progressInfo(updateChan, "Mounted boot fs.\n")
 	time.Sleep(2 * time.Second)
+
 	return nil
 }
 
