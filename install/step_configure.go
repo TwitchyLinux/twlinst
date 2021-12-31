@@ -40,7 +40,7 @@ const nixCfgTmpl = `
 {lib, ...}:
 {
 	imports = [
-		/etc/twl-base
+		../twl-base
 		./filesystems.nix
 	];
 
@@ -58,14 +58,17 @@ const nixCfgTmpl = `
 	services.getty.autologinUser = "{{.Username}}";
 	system.activationScripts.etc = lib.stringAfter [ "users" "groups" ]
 		''
-			mkdir -pv /home/{{.Username}}/.config/sway
-			ln -s /etc/twl-base/resources/sway.config /home/{{.Username}}/.config/sway/config || true
+		mkdir -pv /home/{{.Username}}/.config/sway
+		ln -s /etc/twl-base/resources/sway.config /home/{{.Username}}/.config/sway/config || true
+		chown {{.Username}} /home/{{.Username}}/.config
+		chown {{.Username}} /home/{{.Username}}/.config/sway
 
-			if [ ! -f /home/{{.Username}}/.bashrc ]; then
+		if [ ! -f /home/{{.Username}}/.bashrc ]; then
 			echo 'if [[ $(tty) == "/dev/tty1" ]]; then' >> /home/{{.Username}}/.bash_login
 			echo '  sleep 2 && startsway' >> /home/{{.Username}}/.bash_login
 			echo 'fi' >> /home/{{.Username}}/.bash_login
-			fi
+			chown {{.Username}} /home/{{.Username}}/.bash_login
+		fi
 		'';
 	{{- end}}
 }
