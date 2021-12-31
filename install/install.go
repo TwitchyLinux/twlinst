@@ -41,6 +41,8 @@ func (r *Run) install() {
 		r.uiUpdate <- Update{Msg: step.Name() + "\n", Level: MsgCmd}
 		if err := step.Exec(r.uiUpdate, r); err != nil {
 			r.uiUpdate <- Update{Msg: fmt.Sprintf("\nStep %q failed! %v\n", step.Name(), err), Level: MsgErr}
+			return
 		}
+		r.uiUpdate <- Update{Msg: "\n", Level: MsgCmd}
 	}
 }

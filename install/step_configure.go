@@ -97,12 +97,14 @@ func (s *ConfigureStep) Exec(updateChan chan Update, run *Run) error {
 }
 
 func (s *ConfigureStep) setupNixConf(updateChan chan Update, run *Run, mountBase string) error {
+	progressInfo(updateChan, "  Writing configuration.nix.\n\n")
+
 	t, err := template.New("configuration.nix").Parse(nixCfgTmpl)
 	if err != nil {
 		return fmt.Errorf("template parse: %v", err)
 	}
 
-	f, err := os.OpenFile(filepath.Join(mountBase, "etc", "nixos", "configuration.nix"), os.O_CREATE | os.O_TRUNC | os.O_WRONLY, 0644)
+	f, err := os.OpenFile(filepath.Join(mountBase, "etc", "nixos", "configuration.nix"), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
@@ -115,11 +117,11 @@ func (s *ConfigureStep) setupNixConf(updateChan chan Update, run *Run, mountBase
 	}
 
 	if err := t.Execute(f, map[string]interface{}{
-		"Username": run.config.Username,
-		"Timezone": run.config.Timezone,
+		"Username":     run.config.Username,
+		"Timezone":     run.config.Timezone,
 		"PasswordHash": strings.TrimSpace(string(pwHash)),
-		"Hostname": run.config.Hostname,
-		"Autologin": run.config.Autologin,
+		"Hostname":     run.config.Hostname,
+		"Autologin":    run.config.Autologin,
 	}); err != nil {
 		return fmt.Errorf("writing config: %v", err)
 	}
@@ -128,12 +130,14 @@ func (s *ConfigureStep) setupNixConf(updateChan chan Update, run *Run, mountBase
 }
 
 func (s *ConfigureStep) setupFilesystemConf(updateChan chan Update, run *Run, mountBase string) error {
+	progressInfo(updateChan, "  Writing filesystems.nix.\n")
+
 	t, err := template.New("filesystems.nix").Parse(fsTmpl)
 	if err != nil {
 		return fmt.Errorf("template parse: %v", err)
 	}
 
-	f, err := os.OpenFile(filepath.Join(mountBase, "etc", "nixos", "filesystems.nix"), os.O_CREATE | os.O_TRUNC | os.O_WRONLY, 0644)
+	f, err := os.OpenFile(filepath.Join(mountBase, "etc", "nixos", "filesystems.nix"), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
@@ -173,11 +177,10 @@ func (s *ConfigureStep) setupEtc(updateChan chan Update, run *Run, mountBase str
 	}
 
 	progressInfo(updateChan, "\n  Staging configuration:\n")
-	e := exec.Command("cp", "-ar", "/etc/nixos", filepath.Join(mountBase, "etc"))
+	e := exec.Command("cp", "-arv", "/etc/nixos", filepath.Join(mountBase, "etc"))
 	e.Stdout = &cmdInteractiveWriter{
 		updateChan: updateChan,
 		logPrefix:  "  ",
-		IsProgress: true,
 	}
 	e.Stderr = e.Stdout
 	if err := e.Start(); err != nil {
@@ -188,7 +191,6 @@ func (s *ConfigureStep) setupEtc(updateChan chan Update, run *Run, mountBase str
 	e.Stdout = &cmdInteractiveWriter{
 		updateChan: updateChan,
 		logPrefix:  "  ",
-		IsProgress: true,
 	}
 	e.Stderr = e.Stdout
 	if err := e.Start(); err != nil {
@@ -196,6 +198,7 @@ func (s *ConfigureStep) setupEtc(updateChan chan Update, run *Run, mountBase str
 	}
 	e.Wait()
 
+	progressInfo(updateChan, "\n  Preparing base config.\n")
 	a := Applyer{
 		Run:         run,
 		TwlBasePath: filepath.Join(mountBase, "etc", "twl-base"),
