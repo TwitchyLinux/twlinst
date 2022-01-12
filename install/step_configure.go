@@ -32,7 +32,7 @@ const fsTmpl = `
 			};
 		};
 
-		boot.initrd.availableKernelModules = ["aesni_intel" "cryptd"];
+		boot.initrd.availableKernelModules = ["aesni_intel" "cryptd" "nvme" "ahci" "ata_piix" "uas" "sd_mod" "sr_mod" "xhci_pci" "sdhci_pci" ];
 	}
 `
 
@@ -68,6 +68,14 @@ const nixCfgTmpl = `
 			echo '  sleep 2 && startsway' >> /home/{{.Username}}/.bash_login
 			echo 'fi' >> /home/{{.Username}}/.bash_login
 			chown {{.Username}} /home/{{.Username}}/.bash_login
+		fi
+
+		mkdir 			-pv /home/{{.Username}}/.config/nixpkgs
+		chown {{.Username}} /home/{{.Username}}/.config/nixpkgs
+
+		if [ ! -f /home/{{.Username}}/.config/nixpkgs/config.nix ]; then
+			echo '{ allowUnfree = true; }' > /home/{{.Username}}/.config/nixpkgs
+			chown {{.Username}} /home/{{.Username}}/.config/nixpkgs
 		fi
 		'';
 	{{- end}}
