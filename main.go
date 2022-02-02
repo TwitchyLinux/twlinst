@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -187,9 +188,7 @@ func (a *App) mainloop() {
 	gtk.Main()
 }
 
-func main() {
-	flag.Parse()
-	args := flag.Args()
+func mainApp(args []string) {
 	gtk.Init(&args)
 
 	a, err := makeApp()
@@ -199,4 +198,70 @@ func main() {
 	}
 
 	a.mainloop()
+}
+
+var (
+	configFlag = flag.String("config", "", "Install using the provided configuration instead of automatically.")
+)
+
+func main() {
+	flag.Parse()
+	args := flag.Args()
+
+	if *configFlag == "" {
+		mainApp(args)
+	} else {
+		// Non-interactive!
+		noninteractiveInstall()
+	}
+}
+
+func noninteractiveInstall() {
+	f, err := os.Open(*configFlag)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Reading config: %v\n", err)
+		os.Exit(1)
+	}
+	var conf install.Settings
+	if err := json.NewDecoder(f).Decode(&conf); err != nil {
+		fmt.Fprintf(os.Stderr, "Decoding config: %v\n", err)
+		f.Close()
+		os.Exit(1)
+	}
+	f.Close()
+
+	disks, err := getDiskInfo()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Reading disks: %v\n", err)
+		os.Exit(1)
+	}
+	for _, d := range disks {
+		if d.Path == conf.ConfigOnlyDisk {
+			conf.Disk = d
+		}
+	}
+	if conf.Disk.Path == "" {
+		fmt.Fprintf(os.Stderr, "Couldnt find install disk %q\n", conf.ConfigOnlyDisk)
+		os.Exit(1)
+	}
+
+	// Print updates on the screen
+	upChan := make(chan install.Update, 1)
+	go func() {
+		for msg := range upChan {
+			if msg.Step != "" {
+				fmt.Printf("Starting stage %s\n", msg.Step)
+			}
+			if msg.Msg != "" {
+				fmt.Print(msg.Msg)
+			}
+		}
+	}()
+
+	run := install.Configure(upChan, conf)
+	if err := run.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "Install init failed: %v\n", err)
+		os.Exit(1)
+	}
+	run.Wait()
 }

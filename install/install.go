@@ -1,9 +1,12 @@
 package install
 
 import "fmt"
+import "time"
 
 // Run represents a running installation process.
 type Run struct {
+	done bool
+
 	uiUpdate chan Update
 	config   Settings
 
@@ -44,5 +47,15 @@ func (r *Run) install() {
 			return
 		}
 		r.uiUpdate <- Update{Msg: "\n", Level: MsgCmd}
+	}
+	r.done = true
+}
+
+func (r *Run) Wait() {
+	for {
+		if r.done {
+			break
+		}
+		time.Sleep(250 * time.Millisecond)
 	}
 }
