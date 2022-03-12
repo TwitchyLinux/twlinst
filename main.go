@@ -1,11 +1,13 @@
 package main
 
 import (
-	"errors"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
@@ -107,6 +109,15 @@ func makeApp() (*App, error) {
 	}
 	if err := a.panes[0].Show(&a.settings, a.fullGrid); err != nil {
 		return nil, err
+	}
+
+	version, err := ioutil.ReadFile("/twl-installer-version")
+	if err == nil {
+		obj, err = b.GetObject("versionLabel")
+		if err != nil {
+			return nil, errors.New("couldnt find versionLabel")
+		}
+		obj.(*gtk.Label).SetText("TwitchyLinux " + strings.TrimSpace(string(version)))
 	}
 
 	return &a, a.build(b)
