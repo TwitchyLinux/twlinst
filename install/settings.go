@@ -16,4 +16,6 @@ type Settings struct {
 	Autologin bool   `json:"autologin"`
 
 	ConfigOnlyDisk string `json:"install_disk"`
+
+	NixosHardwareImport string `json:"nixos_hardware_import"`
 }

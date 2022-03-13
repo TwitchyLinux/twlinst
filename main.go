@@ -104,6 +104,7 @@ func makeApp() (*App, error) {
 	a.panes = []pane{
 		initIntroPane(b),
 		initSettingsPane(b),
+		initHardwarePane(b),
 		initConfirmPane(b),
 		initInstallPane(b),
 	}

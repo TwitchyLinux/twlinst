@@ -89,6 +89,11 @@ func (p *confirmPane) Show(settings *install.Settings, fullGrid *gtk.Grid) error
 	writeStyled("Timezone: ", "settingName")
 	writeStyled(settings.Timezone, "")
 	writeStyled("\n", "")
+	if settings.NixosHardwareImport != "" {
+		writeStyled("Hardware profile (nixos/hardware setting): ", "settingName")
+		writeStyled(settings.NixosHardwareImport, "")
+		writeStyled("\n", "")
+	}
 
 	writeStyled("Install to:\n  Path: ", "settingName")
 	writeStyled(settings.Disk.Path+"\n", "")

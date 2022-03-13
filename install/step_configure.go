@@ -42,6 +42,9 @@ const nixCfgTmpl = `
 	imports = [
 		../twl-base
 		./filesystems.nix
+		{{if .NixosHardwareImport -}}
+		../nixos-hardware/{{.NixosHardwareImport}}
+		{{- end}}
 	];
 
 	users.users.{{.Username}} = {
@@ -128,11 +131,12 @@ func (s *ConfigureStep) setupNixConf(updateChan chan Update, run *Run, mountBase
 	}
 
 	if err := t.Execute(f, map[string]interface{}{
-		"Username":     run.config.Username,
-		"Timezone":     run.config.Timezone,
-		"PasswordHash": strings.TrimSpace(string(pwHash)),
-		"Hostname":     run.config.Hostname,
-		"Autologin":    run.config.Autologin,
+		"Username":            run.config.Username,
+		"Timezone":            run.config.Timezone,
+		"PasswordHash":        strings.TrimSpace(string(pwHash)),
+		"Hostname":            run.config.Hostname,
+		"Autologin":           run.config.Autologin,
+		"NixosHardwareImport": run.config.NixosHardwareImport,
 	}); err != nil {
 		return fmt.Errorf("writing config: %v", err)
 	}
@@ -208,15 +212,16 @@ func (s *ConfigureStep) setupEtc(updateChan chan Update, run *Run, mountBase str
 		return err
 	}
 	e.Wait()
-
-	progressInfo(updateChan, "\n  Preparing base config.\n")
-	a := Applyer{
-		Run:         run,
-		TwlBasePath: filepath.Join(mountBase, "etc", "twl-base"),
+	e = exec.Command("cp", "-ar", "/etc/nixos-hardware", filepath.Join(mountBase, "etc"))
+	e.Stdout = &cmdInteractiveWriter{
+		updateChan: updateChan,
+		logPrefix:  "  ",
 	}
-	if err := a.Exec(); err != nil {
+	e.Stderr = e.Stdout
+	if err := e.Start(); err != nil {
 		return err
 	}
+	e.Wait()
 
 	return nil
 }
