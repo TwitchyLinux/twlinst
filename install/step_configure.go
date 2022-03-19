@@ -59,29 +59,13 @@ const nixCfgTmpl = `
 	{{if .Autologin -}}
 	# Automatically login on startup.
 	services.getty.autologinUser = "{{.Username}}";
-	system.activationScripts.etc = lib.stringAfter [ "users" "groups" ]
-		''
-		mkdir -pv /home/{{.Username}}/.config/sway
-		ln -s /etc/twl-base/resources/sway.config /home/{{.Username}}/.config/sway/config || true
-		chown {{.Username}} /home/{{.Username}}/.config
-		chown {{.Username}} /home/{{.Username}}/.config/sway
-
-		if [ ! -f /home/{{.Username}}/.bash_login ]; then
-			echo 'if [[ $(tty) == "/dev/tty1" ]]; then' >> /home/{{.Username}}/.bash_login
-			echo '  sleep 2 && startsway' >> /home/{{.Username}}/.bash_login
-			echo 'fi' >> /home/{{.Username}}/.bash_login
-			chown {{.Username}} /home/{{.Username}}/.bash_login
-		fi
-
-		mkdir 			-pv /home/{{.Username}}/.config/nixpkgs
-		chown {{.Username}} /home/{{.Username}}/.config/nixpkgs
-
-		if [ ! -f /home/{{.Username}}/.config/nixpkgs/config.nix ]; then
-			echo '{ allowUnfree = true; }' > /home/{{.Username}}/.config/nixpkgs/config.nix
-			chown {{.Username}} /home/{{.Username}}/.config/nixpkgs/config.nix
-		fi
-		'';
 	{{- end}}
+
+	system.activationScripts.etc = import ../twl-base/user-skel/default-user-config.nix {
+		lib = lib;
+		username = "{{.Username}}";
+		autologin = {{.Autologin}};
+	};
 }
 `
 
