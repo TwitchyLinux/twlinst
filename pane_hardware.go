@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/gotk3/gotk3/glib"
@@ -103,14 +104,20 @@ func (p *hardwarePane) populateFromFile() {
 		return
 	}
 
-	prefixes := map[string]struct{}{}
-	for k, _ := range profiles {
+	sortedPrefixes := make([]string, 0, 32)
+	seen := make(map[string]struct{})
+	for k := range profiles {
 		if idx := strings.Index(k, "-"); idx > 0 {
-			prefixes[k[:idx]] = struct{}{}
+			if _, exists := seen[k[:idx]]; !exists {
+				seen[k[:idx]] = struct{}{}
+				sortedPrefixes = append(sortedPrefixes, k[:idx])
+			}
 		}
 	}
+	sort.Strings(sortedPrefixes)
+
 	prefixesTree := map[string]*gtk.TreeIter{}
-	for prefix, _ := range prefixes {
+	for _, prefix := range sortedPrefixes {
 		prefixesTree[prefix] = p.appendRow(nil, prefix, "")
 	}
 
