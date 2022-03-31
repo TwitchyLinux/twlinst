@@ -48,6 +48,7 @@ func (r *Run) install() {
 		}
 		r.uiUpdate <- Update{Msg: "\n", Level: MsgCmd}
 	}
+	r.uiUpdate <- Update{Complete: true}
 	r.done = true
 }
 

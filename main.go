@@ -107,6 +107,7 @@ func makeApp() (*App, error) {
 		initHardwarePane(b),
 		initConfirmPane(b),
 		initInstallPane(b),
+		initDonePane(b),
 	}
 	if err := a.panes[0].Show(&a.settings, a.fullGrid); err != nil {
 		return nil, err

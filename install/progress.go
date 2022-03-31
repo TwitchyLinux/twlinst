@@ -25,6 +25,7 @@ type Update struct {
 	Level MsgLevel
 
 	TrimLastLine bool
+	Complete bool
 }
 
 func progressInfo(updateChan chan Update, fmtStr string, args ...interface{}) {

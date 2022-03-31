@@ -23,6 +23,7 @@ import (
 import "C"
 
 type installPane struct {
+	done     bool
 	updateCh chan install.Update
 	prev     *gtk.Button
 	content  *gtk.Grid
@@ -101,6 +102,7 @@ func initInstallPane(b *gtk.Builder) *installPane {
 
 	updateCh := make(chan install.Update)
 	p := &installPane{
+		false,
 		updateCh,
 		prev,
 		content,
@@ -130,6 +132,10 @@ func (p *installPane) updater() {
 	var outText string
 	sync := make(chan bool)
 	for msg := range p.updateCh {
+		if msg.Complete {
+			p.done = true
+		}
+
 		if msg.Step != "" {
 			glib.IdleAdd(func() {
 				applyBold(p.stepFormatLabel, msg.Step == "format")
@@ -202,4 +208,8 @@ func (p *installPane) Hide(settings *install.Settings, fullGrid *gtk.Grid) error
 	}
 	fullGrid.Remove(currentPane)
 	return nil
+}
+
+func (p *installPane) ShouldNext(settings *install.Settings, fullGrid *gtk.Grid) (bool, error) {
+	return p.done, nil
 }
