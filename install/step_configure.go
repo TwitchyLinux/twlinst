@@ -49,7 +49,7 @@ const nixCfgTmpl = `
 
 	users.users.{{.Username}} = {
 		isNormalUser = true;
-		extraGroups = [ "wheel" "networkmanager" "video" ];
+		extraGroups = [ "wheel" "networkmanager" "video" "lp" "dialout" "users" ];
 		hashedPassword = "{{.PasswordHash}}";
 	};
 
