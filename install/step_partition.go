@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-const bootPartSizeMB = 256
-
 // ByteCountDecimal pretty-formats the number of bytes.
 func ByteCountDecimal(b int64) string {
 	const unit = 1000
@@ -27,10 +25,17 @@ func ByteCountDecimal(b int64) string {
 type PartitionStep struct{}
 
 func (s *PartitionStep) Exec(updateChan chan Update, run *Run) error {
+	bootPartSizeMB := 512
+	if sz := run.config.Disk.NumBlocks*512; sz < 12 * (1024*1024*1024) {
+		bootPartSizeMB = 256
+	} else if sz > 100 * (1024*1024*1024) {
+		bootPartSizeMB = 1024
+	}
+
 	progressInfo(updateChan, "Partitioning %q\n", run.config.Disk.Path)
 	progressInfo(updateChan, "Device has a capacity of %s\n", ByteCountDecimal(int64(run.config.Disk.NumBlocks*512)))
 	progressInfo(updateChan, "\n  New partition table:\n")
-	progressInfo(updateChan, "    [FAT32]  Boot partition (%s)\n", ByteCountDecimal(1024*1024*bootPartSizeMB))
+	progressInfo(updateChan, "    [FAT32]  Boot partition (%s)\n", ByteCountDecimal(1024*1024*int64(bootPartSizeMB)))
 	progressInfo(updateChan, "    [LUKS2]  Encrypted root partition\n")
 
 	cmd := exec.Command("sudo", "parted", "--script", run.config.Disk.Path, "mklabel", "gpt",
